@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeFiLend - 去中心化借贷平台</title>
+    <!-- 引入外部资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.5/dist/web3.min.js"></script>
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        success: '#52C41A',
+                        danger: '#FF4D4F',
+                        warning: '#FAAD14',
+                        dark: '#1D2129',
+                        'dark-light': '#272E3B',
+                        'light-gray': '#F2F3F5'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .gradient-mask {
+                mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+            }
+            .glass-effect {
+                backdrop-filter: blur(10px);
+                background-color: rgba(255, 255, 255, 0.05);
+            }
+        }
+    </style>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        
+        .hero-bg {
+            background: radial-gradient(circle at 50% 50%, rgba(22, 93, 255, 0.15) 0%, rgba(22, 93, 255, 0) 50%);
+        }
+        
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .token-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(22, 93, 255, 0.1);
+        }
+        
+        .nav-scrolled {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 模态框动画 */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms;
+        }
+        .modal-exit {
+            opacity: 1;
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 300ms, transform 300ms;
+        }
+        
+        /* 加载动画 */
+        .loader {
+            border-top-color: #165DFF;
+            animation: spinner 0.6s linear infinite;
+        }
+        
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-white font-inter text-dark">
+    <!-- 导航栏 -->
+    <header id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4">
+        <div class="container mx-auto px-4 md:px-6">
+            <nav class="flex items-center justify-between">
+                <!-- 品牌标识 -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                        <i class="fa fa-unlink text-white text-xl"></i>
+                    </div>
+                    <span class="text-xl font-bold text-dark">DeFiLend</span>
+                </div>
+                
+                <!-- 桌面导航 -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#home" class="font-medium hover:text-primary transition-colors">首页</a>
+                    <a href="#features" class="font-medium hover:text-primary transition-colors">功能</a>
+                    <a href="#market" class="font-medium hover:text-primary transition-colors">市场</a>
+                    <a href="#portfolio" class="font-medium hover:text-primary transition-colors">我的资产</a>
+                    <a href="#how-it-works" class="font-medium hover:text-primary transition-colors">如何运作</a>
+                    <a href="#faq" class="font-medium hover:text-primary transition-colors">常见问题</a>
+                </div>
+                
+                <!-- 连接钱包/账户信息 -->
+                <div class="flex items-center space-x-4">
+                    <div id="walletInfo" class="hidden items-center space-x-2">
+                        <div class="relative group">
+                            <button class="flex items-center space-x-2 bg-light-gray hover:bg-gray-200 px-4 py-2 rounded-lg font-medium transition-colors">
+                                <div id="accountAvatar" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                                    0x
+                                </div>
+                                <span id="accountAddress" class="text-sm font-medium truncate max-w-[120px]">0x...</span>
+                                <i class="fa fa-chevron-down text-xs"></i>
+                            </button>
+                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50 hidden group-hover:block">
+                                <a href="#portfolio" class="block px-4 py-2 text-sm hover:bg-light-gray">我的资产</a>
+                                <a href="#" id="disconnectWallet" class="block px-4 py-2 text-sm text-danger hover:bg-light-gray">断开连接</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="connectWallet" class="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg hover:shadow-primary/20 hover:shadow-xl">
+                        连接钱包
+                    </button>
+                    
+                    <!-- 移动端菜单按钮 -->
+                    <button id="menuBtn" class="md:hidden text-dark focus:outline-none">
+                        <i class="fa fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </nav>
+        </div>
+        
+        <!-- 移动端导航菜单 -->
+        <div id="mobileMenu" class="md:hidden hidden bg-white border-t mt-4">
+            <div class="container mx-auto px-4 py-3 flex flex-col space-y-3">
+                <a href="#home" class="py-2 font-medium hover:text-primary transition-colors">首页</a>
+                <a href="#features" class="py-2 font-medium hover:text-primary transition-colors">功能</a>
+                <a href="#market" class="py-2 font-medium hover:text-primary transition-colors">市场</a>
+                <a href="#portfolio" class="py-2 font-medium hover:text-primary transition-colors">我的资产</a>
+                <a href="#how-it-works" class="py-2 font-medium hover:text-primary transition-colors">如何运作</a>
+                <a href="#faq" class="py-2 font-medium hover:text-primary transition-colors">常见问题</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- 首页/英雄区 -->
+        <section id="home" class="hero-bg pt-32 pb-20 md:pt-40 md:pb-32">
+            <div class="container mx-auto px-4 md:px-6">
+                <div class="flex flex-col md:flex-row items-center">
+                    <div class="md:w-1/2 mb-10 md:mb-0">
+                        <span class="inline-block px-4 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
+                            去中心化金融
+                        </span>
+                        <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold leading-tight mb-6">
+                            无需中介的<br>加密资产借贷平台
+                        </h1>
+                        <p class="text-gray-600 text-lg mb-8 max-w-lg">
+                            在DeFiLend，您可以轻松存入加密资产赚取收益，或通过抵押资产获取贷款，全程无需中介参与。
+                        </p>
+                        <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                            <a href="#market" class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium transition-all shadow-lg hover:shadow-primary/20 hover:shadow-xl text-center">
+                                开始使用
+                            </a>
+                            <a href="#how-it-works" class="border border-gray-300 hover:border-primary hover:text-primary px-8 py-3 rounded-lg font-medium transition-colors text-center">
+                                了解更多
+                            </a>
+                        </div>
+                        
+                        <div class="flex items-center space-x-8 mt-12">
+                            <div>
+                                <div class="text-3xl font-bold text-dark">¥3.2亿</div>
+                                <div class="text-gray-500">总锁仓价值</div>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-bold text-dark">12,500+</div>
+                                <div class="text-gray-500">活跃用户</div>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-bold text-dark">15+</div>
+                                <div class="text-gray-500">支持资产</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="md:w-1/2 animate-float">
+                        <img src="https://picsum.photos/id/1/600/400" alt="去中心化借贷平台" class="rounded-xl shadow-2xl">
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 市场与利率 -->
+        <section id="market" class="py-20 bg-light-gray">
+            <div class="container mx-auto px-4 md:px-6">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <span class="inline-block px-4 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
+                        市场数据
+                    </span>
+                    <h2 class="text-[clamp(1.8rem,4vw,3rem)] font-bold mb-6">实时市场利率与可用资产</h2>
+                    <p class="text-gray-600 text-lg">
+                        查看当前市场上可用的加密资产、存款和借款利率，做出明智的财务决策
+                    </p>
+                </div>
+                
+                <!-- 市场数据表格 -->
+                <div class="bg-white rounded-xl shadow-xl overflow-hidden mb-12">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="bg-gray-50 border-b">
+                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">资产</th>
+                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">存款利率</th>
+                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">借款利率</th>
+                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">可用资金</th>
+                                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">总借款</th>
+                                    <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 资产1 -->
+                                <tr class="border-b hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center">
+                                            <img src="https://picsum.photos/id/237/32/32" alt="BTC" class="w-8 h-8 rounded-full mr-3">
+                                            <div>
+                                                <div class="font-medium">比特币 (BTC)</div>
+                                                <div class="text-sm text-gray-500">₿</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-success font-medium">4.25%</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-danger font-medium">6.75%</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">1,245.32 BTC</div>
+                                        <div class="text-sm text-gray-500">≈ ¥2.86亿</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">486.25 BTC</div>
+                                        <div class="text-sm text-gray-500">≈ ¥1.11亿</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex justify-end space-x-2">
+                                            <button class="deposit-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="BTC" data-name="比特币" data-rate="4.25%" data-symbol="₿">
+                                                存款
+                                            </button>
+                                            <button class="borrow-btn bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="BTC" data-name="比特币" data-rate="6.75%" data-symbol="₿">
+                                                借款
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- 资产2 -->
+                                <tr class="border-b hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center">
+                                            <img src="https://picsum.photos/id/238/32/32" alt="ETH" class="w-8 h-8 rounded-full mr-3">
+                                            <div>
+                                                <div class="font-medium">以太坊 (ETH)</div>
+                                                <div class="text-sm text-gray-500">Ξ</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-success font-medium">3.85%</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-danger font-medium">5.95%</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">24,689.32 ETH</div>
+                                        <div class="text-sm text-gray-500">≈ ¥3.25亿</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">9,876.54 ETH</div>
+                                        <div class="text-sm text-gray-500">≈ ¥1.29亿</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex justify-end space-x-2">
+                                            <button class="deposit-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="ETH" data-name="以太坊" data-rate="3.85%" data-symbol="Ξ">
+                                                存款
+                                            </button>
+                                            <button class="borrow-btn bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="ETH" data-name="以太坊" data-rate="5.95%" data-symbol="Ξ">
+                                                借款
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- 资产3 -->
+                                <tr class="border-b hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center">
+                                            <img src="https://picsum.photos/id/239/32/32" alt="USDT" class="w-8 h-8 rounded-full mr-3">
+                                            <div>
+                                                <div class="font-medium">泰达币 (USDT)</div>
+                                                <div class="text-sm text-gray-500">$</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-success font-medium">2.15%</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="text-danger font-medium">3.25%</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">15,896,324 USDT</div>
+                                        <div class="text-sm text-gray-500">≈ ¥1.15亿</div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="font-medium">7,654,321 USDT</div>
+                                        <div class="text-sm text-gray-500">≈ ¥0.55亿</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex justify-end space-x-2">
+                                            <button class="deposit-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="USDT" data-name="泰达币" data-rate="2.15%" data-symbol="$">
+                                                存款
+                                            </button>
+                                            <button class="borrow-btn bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="USDT" data-name="泰达币" data-rate="3.25%" data-symbol="$">
+                                                借款
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 我的资产 -->
+        <section id="portfolio" class="py-20">
+            <div class="container mx-auto px-4 md:px-6">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <span class="inline-block px-4 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
+                        我的资产
+                    </span>
+                    <h2 class="text-[clamp(1.8rem,4vw,3rem)] font-bold mb-6">管理您的存款与借款</h2>
+                    <p class="text-gray-600 text-lg" id="portfolioDescription">
+                        连接钱包后查看您的资产组合、存款和未偿还借款
+                    </p>
+                </div>
+                
+                <!-- 钱包未连接状态 -->
+                <div id="portfolioNotConnected" class="flex flex-col items-center justify-center py-20 bg-light-gray rounded-xl">
+                    <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                        <i class="fa fa-wallet text-primary text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">尚未连接钱包</h3>
+                    <p class="text-gray-600 text-center max-w-md mb-6">
+                        连接您的数字钱包以查看和管理您的存款、借款和抵押资产
+                    </p>
+                    <button id="connectWalletFromPortfolio" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                        连接钱包
+                    </button>
+                </div>
+                
+                <!-- 钱包已连接状态 - 默认隐藏 -->
+                <div id="portfolioConnected" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold">总资产价值</h3>
+                                <i class="fa fa-balance-scale text-primary text-xl"></i>
+                            </div>
+                            <div class="text-3xl font-bold mb-2" id="totalPortfolioValue">¥0.00</div>
+                            <div class="text-success text-sm flex items-center">
+                                <i class="fa fa-arrow-up mr-1"></i> 2.5% 24小时
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold">存款总额</h3>
+                                <i class="fa fa-credit-card text-success text-xl"></i>
+                            </div>
+                            <div class="text-3xl font-bold mb-2" id="totalDeposits">¥0.00</div>
+                            <div class="text-success text-sm flex items-center">
+                                <i class="fa fa-arrow-up mr-1"></i> 收益: ¥0.00
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold">借款总额</h3>
+                                <i class="fa fa-university text-warning text-xl"></i>
+                            </div>
+                            <div class="text-3xl font-bold mb-2" id="totalBorrows">¥0.00</div>
+                            <div class="text-danger text-sm flex items-center">
+                                <i class="fa fa-clock-o mr-1"></i> 应付利息: ¥0.00
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 我的存款 -->
+                    <div class="mb-12">
+                        <h3 class="text-xl font-bold mb-6">我的存款</h3>
+                        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b">
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">资产</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">数量</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">价值</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">利率</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">累计收益</th>
+                                            <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="myDepositsTableBody">
+                                        <tr>
+                                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                                您尚未存入任何资产
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 我的借款 -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-6">我的借款</h3>
+                        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="bg-gray-50 border-b">
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">借款资产</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">数量</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">抵押资产</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">抵押率</th>
+                                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">应付利息</th>
+                                            <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="myBorrowsTableBody">
+                                        <tr>
+                                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                                您尚未有任何借款
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white pt-16 pb-8">
+        <div class="container mx-auto px-4 md:px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+                <div>
+                    <div class="flex items-center space-x-2 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                            <i class="fa fa-unlink text-white text-xl"></i>
+                        </div>
+                        <span class="text-xl font-bold text-white">DeFiLend</span>
+                    </div>
+                    <p class="text-gray-400 mb-6">
+                        去中心化借贷平台，让您的加密资产发挥最大价值，无需中介参与。
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 rounded-full bg-dark-light flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary transition-colors">
+                            <i class="fa fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-dark-light flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary transition-colors">
+                            <i class="fa fa-telegram"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-dark-light flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary transition-colors">
+                            <i class="fa fa-discord"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-dark-light flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary transition-colors">
+                            <i class="fa fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-6">产品</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#market" class="text-gray-400 hover:text-white transition-colors">市场</a></li>
+                        <li><a href="#portfolio" class="text-gray-400 hover:text-white transition-colors">我的资产</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">收益率</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">流动性挖矿</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-6">资源</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#how-it-works" class="text-gray-400 hover:text-white transition-colors">如何使用</a></li>
+                        <li><a href="#faq" class="text-gray-400 hover:text-white transition-colors">常见问题</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">API文档</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">开发者资源</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-lg font-semibold mb-6">公司</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">关于我们</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">隐私政策</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">服务条款</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition-colors">联系我们</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-gray-500 text-sm mb-4 md:mb-0">
+                        &copy; 2023 DeFiLend. 保留所有权利。
+                    </p>
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-500 hover:text-gray-300 text-sm">隐私政策</a>
+                        <a href="#" class="text-gray-500 hover:text-gray-300 text-sm">服务条款</a>
+                        <a href="#" class="text-gray-500 hover:text-gray-300 text-sm">风险提示</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- 钱包连接模态框 -->
+    <div id="walletModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">连接钱包</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <button id="connectMetaMask" class="w-full flex items-center justify-between bg-black text-white p-4 rounded-lg hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center">
+                        <img src="https://picsum.photos/id/237/40/40" alt="MetaMask" class="w-8 h-8 rounded-full mr-3">
+                        <span class="font-medium">MetaMask</span>
+                    </div>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+                <button id="connectWalletConnect" class="w-full flex items-center justify-between bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition-colors">
+                    <div class="flex items-center">
+                        <img src="https://picsum.photos/id/238/40/40" alt="WalletConnect" class="w-8 h-8 rounded-full mr-3">
+                        <span class="font-medium">WalletConnect</span>
+                    </div>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+                <button id="connectCoinbase" class="w-full flex items-center justify-between bg-gray-100 text-gray-800 p-4 rounded-lg hover:bg-gray-200 transition-colors">
+                    <div class="flex items-center">
+                        <img src="https://picsum.photos/id/239/40/40" alt="Coinbase Wallet" class="w-8 h-8 rounded-full mr-3">
+                        <span class="font-medium">Coinbase Wallet</span>
+                    </div>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 存款模态框 -->
+    <div id="depositModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">存入资产</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="depositAssetSelect" class="block text-sm font-medium text-gray-700 mb-1">选择资产</label>
+                    <select id="depositAssetSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                        <option value="BTC">比特币 (BTC)</option>
+                        <option value="ETH">以太坊 (ETH)</option>
+                        <option value="USDT">泰达币 (USDT)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="depositAmountInput" class="block text-sm font-medium text-gray-700 mb-1">存款金额</label>
+                    <input type="number" id="depositAmountInput" min="0.001" step="0.001" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" placeholder="输入存款金额">
+                    <div class="flex justify-between mt-1">
+                        <span class="text-xs text-gray-500">最小: 0.001</span>
+                        <button id="maxDepositBtn" class="text-xs text-primary hover:underline">全部存入</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">余额</label>
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <span id="depositBalance">0.00 BTC</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">当前利率</label>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span>存款年利率</span>
+                        <span class="font-bold text-success" id="depositCurrentRate">4.25%</span>
+                    </div>
+                </div>
+                
+                <div id="depositStatus" class="text-sm font-medium text-center"></div>
+                
+                <button id="confirmDeposit" class="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors mt-4">
+                    确认存款
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 借款模态框 -->
+    <div id="borrowModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">借款</h3>
+                <button class="close-modal text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label for="borrowAssetSelect" class="block text-sm font-medium text-gray-700 mb-1">借款资产</label>
+                    <select id="borrowAssetSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                        <option value="BTC">比特币 (BTC)</option>
+                        <option value="ETH">以太坊 (ETH)</option>
+                        <option value="USDT">泰达币 (USDT)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="collateralAssetSelect" class="block text-sm font-medium text-gray-700 mb-1">抵押资产</label>
+                    <select id="collateralAssetSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                        <option value="ETH">以太坊 (ETH)</option>
+                        <option value="BTC">比特币 (BTC)</option>
+                        <option value="USDT">泰达币 (USDT)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="borrowAmountInput" class="block text-sm font-medium text-gray-700 mb-1">借款金额</label>
+                    <input type="number" id="borrowAmountInput" min="0.001" step="0.001" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" placeholder="输入借款金额">
+                    <div class="flex justify-between mt-1">
+                        <span class="text-xs text-gray-500">最小: 0.001</span>
+                        <button id="maxBorrowBtn" class="text-xs text-primary hover:underline">最大可借</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">抵押资产余额</label>
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <span id="collateralBalance">0.00 ETH</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">当前利率 & 抵押率</label>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2">
+                        <span>借款年利率</span>
+                        <span class="font-bold text-danger" id="borrowCurrentRate">6.75%</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span>要求抵押率</span>
+                        <span class="font-bold text-warning">150%</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span>您的抵押率</span>
+                        <span class="font-bold text-primary" id="yourCollateralRate">0%</span>
+                    </div>
+                </div>
+                
+                <div id="borrowStatus" class="text-sm font-medium text-center"></div>
+                
+                <button id="confirmBorrow" class="w-full bg-success hover:bg-success/90 text-white py-3 rounded-lg font-medium transition-colors mt-4">
+                    确认借款
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载中模态框 -->
+    <div id="loadingModal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-xl p-8 flex flex-col items-center max-w-xs w-full">
+            <div class="w-16 h-16 border-4 border-gray-200 rounded-full loader mb-6"></div>
+            <h3 class="text-xl font-bold mb-2 text-center" id="loadingMessage">处理中...</h3>
+            <p class="text-gray-500 text-center" id="loadingSubmessage">请在钱包中确认交易</p>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 全局变量
+        let web3;
+        let currentAccount = null;
+        let lendingContract;
+        let tokenContracts = {};
+        let userDeposits = {};
+        let userBorrows = {};
+        
+        // 智能合约地址和ABI（实际部署时替换为真实值）
+        const LENDING_CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678";
+        const TOKEN_CONTRACTS = {
+            BTC: "0xabcdef1234567890abcdef1234567890abcdef123",
+            ETH: "0xfedcba0987654321fedcba0987654321fedcba09",
+            USDT: "0x9876543210fedcba09876543210fedcba098765"
+        };
+        
+        // 代币信息
+        const TOKEN_INFO = {
+            BTC: { name: "比特币", symbol: "₿", decimals: 8 },
+            ETH: { name: "以太坊", symbol: "Ξ", decimals: 18 },
+            USDT: { name: "泰达币", symbol: "$", decimals: 6 }
+        };
+        
+        // 代币价格（模拟数据）
+        const TOKEN_PRICES = {
+            BTC: 230000,   // 1 BTC = ¥230,000
+            ETH: 13000,    // 1 ETH = ¥13,000
+            USDT: 7.1      // 1 USDT = ¥7.1
+        };
+        
+        // 等待DOM加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化页面
+            initPage();
+            
+            // 检查是否已有连接的钱包
+            checkWalletConnection();
+        });
+        
+        // 初始化页面
+        function initPage() {
+            // 导航栏滚动效果
+            const navbar = document.getElementById('navbar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) {
+                    navbar.classList.add('nav-scrolled');
+                } else {
+                    navbar.classList.remove('nav-scrolled');
+                }
+            });
+            
+            // 移动端菜单切换
+            const menuBtn = document.getElementById('menuBtn');
+            const mobileMenu = document.getElementById('mobileMenu');
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // 模态框相关元素
+            const depositModal = document.getElementById('depositModal');
+            const borrowModal = document.getElementById('borrowModal');
+            const walletModal = document.getElementById('walletModal');
+            const loadingModal = document.getElementById('loadingModal');
+            const closeButtons = document.querySelectorAll('.close-modal');
+            const depositButtons = document.querySelectorAll('.deposit-btn');
+            const borrowButtons = document.querySelectorAll('.borrow-btn');
+            const connectWalletBtn = document.getElementById('connectWallet');
+            const connectWalletFromPortfolioBtn = document.getElementById('connectWalletFromPortfolio');
+            const disconnectWalletBtn = document.getElementById('disconnectWallet');
+            
+            // 钱包连接按钮
+            if (connectWalletBtn) {
+                connectWalletBtn.addEventListener('click', () => {
+                    openModal(walletModal);
+                });
+            }
+            
+            if (connectWalletFromPortfolioBtn) {
+                connectWalletFromPortfolioBtn.addEventListener('click', () => {
+                    openModal(walletModal);
+                });
+            }
+            
+            // 断开连接按钮
+            if (disconnectWalletBtn) {
+                disconnectWalletBtn.addEventListener('click', disconnectWallet);
+            }
+            
+            // 钱包连接选项
+            document.getElementById('connectMetaMask').addEventListener('click', () => {
+                connectMetaMask();
+            });
+            
+            document.getElementById('connectWalletConnect').addEventListener('click', () => {
+                showStatus('WalletConnect连接功能即将推出', 'info', walletModal);
+            });
+            
+            document.getElementById('connectCoinbase').addEventListener('click', () => {
+                showStatus('Coinbase Wallet连接功能即将推出', 'info', walletModal);
+            });
+            
+            // 打开存款模态框
+            depositButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (!currentAccount) {
+                        showStatus('请先连接钱包', 'error');
+                        return;
+                    }
+                    
+                    // 获取按钮上的数据属性
+                    const asset = this.getAttribute('data-asset');
+                    const name = this.getAttribute('data-name');
+                    const rate = this.getAttribute('data-rate');
+                    const symbol = this.getAttribute('data-symbol');
+                    
+                    // 设置模态框中的值
+                    const depositAssetSelect = document.getElementById('depositAssetSelect');
+                    const depositCurrentRate = document.getElementById('depositCurrentRate');
+                    
+                    if (depositAssetSelect && depositCurrentRate) {
+                        depositAssetSelect.value = asset;
+                        depositCurrentRate.textContent = rate;
+                    }
+                    
+                    // 更新余额显示
+                    updateDepositBalance(asset);
+                    
+                    // 显示模态框
+                    openModal(depositModal);
+                });
+            });
+            
+            // 打开借款模态框
+            borrowButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (!currentAccount) {
+                        showStatus('请先连接钱包', 'error');
+                        return;
+                    }
+                    
+                    // 获取按钮上的数据属性
+                    const asset = this.getAttribute('data-asset');
+                    const name = this.getAttribute('data-name');
+                    const rate = this.getAttribute('data-rate');
+                    const symbol = this.getAttribute('data-symbol');
+                    
+                    // 设置模态框中的值
+                    const borrowAssetSelect = document.getElementById('borrowAssetSelect');
+                    const borrowCurrentRate = document.getElementById('borrowCurrentRate');
+                    
+                    if (borrowAssetSelect && borrowCurrentRate) {
+                        borrowAssetSelect.value = asset;
+                        borrowCurrentRate.textContent = rate;
+                    }
+                    
+                    // 更新抵押资产余额
+                    updateCollateralBalance(document.getElementById('collateralAssetSelect').value);
+                    
+                    // 显示模态框
+                    openModal(borrowModal);
+                });
+            });
+            
+            // 关闭模态框按钮
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = this.closest('.fixed');
+                    closeModal(modal);
+                });
+            });
+            
+            // 点击模态框外部关闭
+            [depositModal, borrowModal, walletModal, loadingModal].forEach(modal => {
+                if (modal) {
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            closeModal(modal);
+                        }
+                    });
+                }
+            });
+            
+            // 存款相关事件
+            document.getElementById('depositAssetSelect').addEventListener('change', function() {
+                const asset = this.value;
+                // 更新利率
+                const rates = { BTC: "4.25%", ETH: "3.85%", USDT: "2.15%" };
+                document.getElementById('depositCurrentRate').textContent = rates[asset] || "0%";
+                // 更新余额
+                updateDepositBalance(asset);
+            });
+            
+            document.getElementById('maxDepositBtn').addEventListener('click', function() {
+                const asset = document.getElementById('depositAssetSelect').value;
+                const balanceEl = document.getElementById('depositBalance');
+                if (balanceEl) {
+                    const balanceText = balanceEl.textContent;
+                    const balance = parseFloat(balanceText.split(' ')[0]);
+                    if (!isNaN(balance) && balance > 0) {
+                        // 留一点余额作为gas费
+                        const maxAmount = (balance * 0.99).toFixed(6);
+                        document.getElementById('depositAmountInput').value = maxAmount;
+                    }
+                }
+            });
+            
+            document.getElementById('confirmDeposit').addEventListener('click', processDeposit);
+            
+            // 借款相关事件
+            document.getElementById('borrowAssetSelect').addEventListener('change', function() {
+                const asset = this.value;
+                // 更新利率
+                const rates = { BTC: "6.75%", ETH: "5.95%", USDT: "3.25%" };
+                document.getElementById('borrowCurrentRate').textContent = rates[asset] || "0%";
+                // 更新抵押率
+                updateCollateralRate();
+            });
+            
+            document.getElementById('collateralAssetSelect').addEventListener('change', function() {
+                const asset = this.value;
+                // 更新余额
+                updateCollateralBalance(asset);
+                // 更新抵押率
+                updateCollateralRate();
+            });
+            
+            document.getElementById('borrowAmountInput').addEventListener('input', updateCollateralRate);
+            
+            document.getElementById('maxBorrowBtn').addEventListener('click', function() {
+                const collateralAsset = document.getElementById('collateralAssetSelect').value;
+                const borrowAsset = document.getElementById('borrowAssetSelect').value;
+                const balanceEl = document.getElementById('collateralBalance');
+                
+                if (balanceEl) {
+                    const balanceText = balanceEl.textContent;
+                    const collateralAmount = parseFloat(balanceText.split(' ')[0]);
+                    
+                    if (!isNaN(collateralAmount) && collateralAmount > 0) {
+                        // 计算最大可借款金额（考虑150%抵押率）
+                        const collateralValue = collateralAmount * TOKEN_PRICES[collateralAsset];
+                        const maxBorrowValue = collateralValue / 1.5; // 150%抵押率
+                        const maxBorrowAmount = (maxBorrowValue / TOKEN_PRICES[borrowAsset]).toFixed(6);
+                        
+                        document.getElementById('borrowAmountInput').value = maxBorrowAmount;
+                        updateCollateralRate();
+                    }
+                }
+            });
+            
+            document.getElementById('confirmBorrow').addEventListener('click', processBorrow);
+        }
+        
+        // 检查钱包连接状态
+        async function checkWalletConnection() {
+            if (window.ethereum) {
+                try {
+                    // 检查是否已有授权的账户
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        currentAccount = accounts[0];
+                        await initializeWeb3();
+                        updateUIWithAccount();
+                        loadUserPortfolio();
+                    }
+                    
+                    // 监听账户变化
+                    window.ethereum.on('accountsChanged', handleAccountsChanged);
+                    
+                    // 监听链变化
+                    window.ethereum.on('chainChanged', handleChainChanged);
+                } catch (error) {
+                    console.error('检查钱包连接时出错:', error);
+                }
+            } else {
+                showStatus('请安装MetaMask等以太坊钱包以使用本平台', 'error');
+            }
+        }
+        
+        // 连接MetaMask钱包
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                try {
+                    showLoading('连接钱包中...', '请稍候');
+                    
+                    // 请求连接账户
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    currentAccount = accounts[0];
+                    
+                    await initializeWeb3();
+                    updateUIWithAccount();
+                    loadUserPortfolio();
+                    
+                    closeModal(document.getElementById('walletModal'));
+                    hideLoading();
+                    showStatus('钱包连接成功', 'success');
+                } catch (error) {
+                    console.error('连接MetaMask失败:', error);
+                    hideLoading();
+                    
+                    if (error.code === 4001) {
+                        showStatus('您已取消连接请求', 'error', document.getElementById('walletModal'));
+                    } else {
+                        showStatus('连接钱包失败，请重试', 'error', document.getElementById('walletModal'));
+                    }
+                }
+            } else {
+                hideLoading();
+                showStatus('未检测到MetaMask，请安装后重试', 'error', document.getElementById('walletModal'));
+            }
+        }
+        
+        // 断开钱包连接
+        function disconnectWallet() {
+            currentAccount = null;
+            web3 = null;
+            lendingContract = null;
+            tokenContracts = {};
+            userDeposits = {};
+            userBorrows = {};
+            
+            updateUIWithAccount();
+            showStatus('已断开钱包连接', 'info');
+        }
+        
+        // 初始化Web3和合约
+        async function initializeWeb3() {
+            // 初始化web3实例
+            web3 = new Web3(window.ethereum);
+            
+            // 加载借贷合约ABI（实际项目中替换为真实ABI）
+            const lendingContractABI = [
+                {
+                    "constant": false,
+                    "inputs": [
+                        {"name": "_token", "type": "address"},
+                        {"name": "_amount", "type": "uint256"}
+                    ],
+                    "name": "deposit",
+                    "outputs": [],
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {"name": "_token", "type": "address"},
+                        {"name": "_amount", "type": "uint256"}
+                    ],
+                    "name": "withdraw",
+                    "outputs": [],
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {"name": "_borrowToken", "type": "address"},
+                        {"name": "_collateralToken", "type": "address"},
+                        {"name": "_borrowAmount", "type": "uint256"},
+                        {"name": "_collateralAmount", "type": "uint256"}
+                    ],
+                    "name": "borrow",
+                    "outputs": [],
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {"name": "_borrowToken", "type": "address"},
+                        {"name": "_amount", "type": "uint256"}
+                    ],
+                    "name": "repay",
+                    "outputs": [],
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [
+                        {"name": "_user", "type": "address"},
+                        {"name": "_token", "type": "address"}
+                    ],
+                    "name": "getDeposit",
+                    "outputs": [{"name": "", "type": "uint256"}],
+                    "type": "function"
+                },
+                {
+                    "constant": true,
+                    "inputs": [
+                        {"name": "_user", "type": "address"},
+                        {"name": "_token", "type": "address"}
+                    ],
+                    "name": "getBorrow",
+                    "outputs": [{"name": "", "type": "uint256"}],
+                    "type": "function"
+                }
+            ];
+            
+            // 创建借贷合约实例
+            lendingContract = new web3.eth.Contract(lendingContractABI, LENDING_CONTRACT_ADDRESS);
+            
+            // 创建代币合约实例（使用标准ERC20 ABI）
+            const erc20ABI = [
+                {
+                    "constant": true,
+                    "inputs": [{"name": "_owner", "type": "address"}],
+                    "name": "balanceOf",
+                    "outputs": [{"name": "balance", "type": "uint256"}],
+                    "type": "function"
+                },
+                {
+                    "constant": false,
+                    "inputs": [
+                        {"name": "_spender", "type": "address"},
+                        {"name": "_value", "type": "uint256"}
+                    ],
+                    "name": "approve",
+                    "outputs": [{"name": "success", "type": "bool"}],
+                    "type": "function"
+                }
+            ];
+            
+            for (const [symbol, address] of Object.entries(TOKEN_CONTRACTS)) {
+                tokenContracts[symbol] = new web3.eth.Contract(erc20ABI, address);
+            }
+        }
+        
+        // 处理账户变化
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                // 账户已断开连接
+                disconnectWallet();
+                showStatus('钱包已断开连接', 'info');
+            } else if (accounts[0] !== currentAccount) {
+                // 账户已切换
+                currentAccount = accounts[0];
+                updateUIWithAccount();
+                loadUserPortfolio();
+                showStatus('已切换到新账户', 'info');
+            }
+        }
+        
+        // 处理链变化
+        function handleChainChanged(chainId) {
+            showStatus('区块链网络已更改，请刷新页面', 'info');
+        }
+        
+        // 更新UI显示账户信息
+        function updateUIWithAccount() {
+            const connectWalletBtn = document.getElementById('connectWallet');
+            const walletInfo = document.getElementById('walletInfo');
+            const accountAddress = document.getElementById('accountAddress');
+            const accountAvatar = document.getElementById('accountAvatar');
+            const portfolioNotConnected = document.getElementById('portfolioNotConnected');
+            const portfolioConnected = document.getElementById('portfolioConnected');
+            
+            if (currentAccount) {
+                // 显示账户信息，隐藏连接按钮
+                if (connectWalletBtn) connectWalletBtn.classList.add('hidden');
+                if (walletInfo) {
+                    walletInfo.classList.remove('hidden');
+                    walletInfo.classList.add('flex');
+                }
+                
+                // 显示缩短的地址
+                if (accountAddress) {
+                    const shortAddress = currentAccount.substring(0, 6) + '...' + currentAccount.substring(currentAccount.length - 4);
+                    accountAddress.textContent = shortAddress;
+                }
+                
+                // 显示地址首字符作为头像
+                if (accountAvatar) {
+                    accountAvatar.textContent = currentAccount.substring(0, 2);
+                }
+                
+                // 显示资产页面
+                if (portfolioNotConnected) portfolioNotConnected.classList.add('hidden');
+                if (portfolioConnected) portfolioConnected.classList.remove('hidden');
+            } else {
+                // 隐藏账户信息，显示连接按钮
+                if (connectWalletBtn) connectWalletBtn.classList.remove('hidden');
+                if (walletInfo) {
+                    walletInfo.classList.add('hidden');
+                    walletInfo.classList.remove('flex');
+                }
+                
+                // 显示未连接状态
+                if (portfolioNotConnected) portfolioNotConnected.classList.remove('hidden');
+                if (portfolioConnected) portfolioConnected.classList.add('hidden');
+            }
+        }
+        
+        // 加载用户资产组合
+        async function loadUserPortfolio() {
+            if (!currentAccount || !web3) return;
+            
+            try {
+                showLoading('加载资产中...', '请稍候');
+                
+                // 重置用户数据
+                userDeposits = {};
+                userBorrows = {};
+                
+                // 加载存款数据
+                for (const [symbol, address] of Object.entries(TOKEN_CONTRACTS)) {
+                    try {
+                        const depositAmount = await lendingContract.methods.getDeposit(currentAccount, address).call();
+                        const decimals = TOKEN_INFO[symbol].decimals;
+                        const formattedAmount = web3.utils.fromWei(depositAmount, 'ether'); // 简化处理，实际应根据decimals转换
+                        
+                        if (parseFloat(formattedAmount) > 0) {
+                            userDeposits[symbol] = {
+                                amount: parseFloat(formattedAmount),
+                                value: parseFloat(formattedAmount) * TOKEN_PRICES[symbol],
+                                rate: symbol === 'BTC' ? 4.25 : symbol === 'ETH' ? 3.85 : 2.15,
+                                // 模拟收益计算
+                                interest: parseFloat(formattedAmount) * (symbol === 'BTC' ? 4.25 : symbol === 'ETH' ? 3.85 : 2.15) / 100 * 0.1
+                            };
+                        }
+                    } catch (error) {
+                        console.error(`加载${symbol}存款数据失败:`, error);
+                    }
+                }
+                
+                // 加载借款数据（模拟）
+                // 实际项目中应从合约读取真实借款数据
+                // userBorrows['USDT'] = {
+                //     amount: 500,
+                //     value: 500 * TOKEN_PRICES['USDT'],
+                //     collateralAsset: 'ETH',
+                //     collateralAmount: 0.5,
+                //     interest: 5
+                // };
+                
+                // 更新UI显示
+                updatePortfolioUI();
+                
+                hideLoading();
+            } catch (error) {
+                console.error('加载资产组合失败:', error);
+                hideLoading();
+                showStatus('加载资产失败，请重试', 'error');
+            }
+        }
+        
+        // 更新资产组合UI
+        function updatePortfolioUI() {
+            // 计算总资产
+            let totalValue = 0;
+            let totalDeposits = 0;
+            let totalDepositsValue = 0;
+            let totalBorrows = 0;
+            let totalBorrowsValue = 0;
+            let totalInterest = 0;
+            let totalBorrowInterest = 0;
+            
+            // 计算存款总额
+            for (const [symbol, data] of Object.entries(userDeposits)) {
+                totalDeposits += data.amount;
+                totalDepositsValue += data.value;
+                totalInterest += data.interest * TOKEN_PRICES[symbol];
+                totalValue += data.value;
+            }
+            
+            // 计算借款总额
+            for (const [symbol, data] of Object.entries(userBorrows)) {
+                totalBorrows += data.amount;
+                totalBorrowsValue += data.value;
+                totalBorrowInterest += data.interest;
+                totalValue -= data.value; // 借款是负债，从总资产中减去
+            }
+            
+            // 更新汇总数据
+            document.getElementById('totalPortfolioValue').textContent = `¥${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('totalDeposits').textContent = `¥${totalDepositsValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.querySelector('#totalDeposits + div').textContent = `收益: ¥${totalInterest.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('totalBorrows').textContent = `¥${totalBorrowsValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.querySelector('#totalBorrows + div').textContent = `应付利息: ¥${totalBorrowInterest.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            
+            // 更新存款表格
+            const depositsTableBody = document.getElementById('myDepositsTableBody');
+            depositsTableBody.innerHTML = '';
+            
+            if (Object.keys(userDeposits).length === 0) {
+                depositsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            您尚未存入任何资产
+                        </td>
+                    </tr>
+                `;
+            } else {
+                for (const [symbol, data] of Object.entries(userDeposits)) {
+                    const token = TOKEN_INFO[symbol];
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-gray-50 transition-colors';
+                    row.innerHTML = `
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <img src="https://picsum.photos/id/${237 + Object.keys(TOKEN_CONTRACTS).indexOf(symbol)}/32/32" alt="${token.name}" class="w-8 h-8 rounded-full mr-3">
+                                <div>
+                                    <div class="font-medium">${token.name} (${symbol})</div>
+                                    <div class="text-sm text-gray-500">${token.symbol}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium">${data.amount.toFixed(6)}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium">¥${data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-success font-medium">${data.rate}%</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-success">${(data.interest * TOKEN_PRICES[symbol]).toFixed(2)}</div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="withdraw-btn bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="${symbol}">
+                                提取
+                            </button>
+                        </td>
+                    `;
+                    depositsTableBody.appendChild(row);
+                }
+                
+                // 添加提取按钮事件
+                document.querySelectorAll('.withdraw-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        // 实际项目中实现提取功能
+                        const asset = this.getAttribute('data-asset');
+                        showStatus(`提取${TOKEN_INFO[asset].name}功能即将实现`, 'info');
+                    });
+                });
+            }
+            
+            // 更新借款表格
+            const borrowsTableBody = document.getElementById('myBorrowsTableBody');
+            borrowsTableBody.innerHTML = '';
+            
+            if (Object.keys(userBorrows).length === 0) {
+                borrowsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            您尚未有任何借款
+                        </td>
+                    </tr>
+                `;
+            } else {
+                for (const [symbol, data] of Object.entries(userBorrows)) {
+                    const token = TOKEN_INFO[symbol];
+                    const collateralToken = TOKEN_INFO[data.collateralAsset];
+                    const collateralValue = data.collateralAmount * TOKEN_PRICES[data.collateralAsset];
+                    const borrowValue = data.amount * TOKEN_PRICES[symbol];
+                    const collateralRate = (collateralValue / borrowValue * 100).toFixed(2);
+                    
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-gray-50 transition-colors';
+                    row.innerHTML = `
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <img src="https://picsum.photos/id/${237 + Object.keys(TOKEN_CONTRACTS).indexOf(symbol)}/32/32" alt="${token.name}" class="w-8 h-8 rounded-full mr-3">
+                                <div>
+                                    <div class="font-medium">${token.name} (${symbol})</div>
+                                    <div class="text-sm text-gray-500">${data.amount.toFixed(6)} ${symbol}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium">¥${data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium">${data.collateralAmount.toFixed(6)} ${data.collateralAsset}</div>
+                            <div class="text-sm text-gray-500">${collateralToken.name}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="${collateralRate < 160 ? 'text-warning' : 'text-success'} font-medium">${collateralRate}%</div>
+                            <div class="text-sm text-gray-500">安全线: 150%</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-danger">¥${data.interest.toFixed(2)}</div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="repay-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors" data-asset="${symbol}">
+                                还款
+                            </button>
+                        </td>
+                    `;
+                    borrowsTableBody.appendChild(row);
+                }
+                
+                // 添加还款按钮事件
+                document.querySelectorAll('.repay-btn').forEach(button => {
+                    button.addEventListener('click', function() {
+                        // 实际项目中实现还款功能
+                        const asset = this.getAttribute('data-asset');
+                        showStatus(`偿还${TOKEN_INFO[asset].name}借款功能即将实现`, 'info');
+                    });
+                });
+            }
+        }
+        
+        // 更新存款余额显示
+        async function updateDepositBalance(asset) {
+            if (!currentAccount || !tokenContracts[asset]) return;
+            
+            try {
+                const balance = await tokenContracts[asset].methods.balanceOf(currentAccount).call();
+                const decimals = TOKEN_INFO[asset].decimals;
+                const formattedBalance = (balance / (10 ** decimals)).toFixed(6);
+                
+                document.getElementById('depositBalance').textContent = `${formattedBalance} ${asset}`;
+            } catch (error) {
+                console.error(`获取${asset}余额失败:`, error);
+                document.getElementById('depositBalance').textContent = `获取余额失败`;
+            }
+        }
+        
+        // 更新抵押资产余额显示
+        async function updateCollateralBalance(asset) {
+            if (!currentAccount || !tokenContracts[asset]) return;
+            
+            try {
+                const balance = await tokenContracts[asset].methods.balanceOf(currentAccount).call();
+                const decimals = TOKEN_INFO[asset].decimals;
+                const formattedBalance = (balance / (10 ** decimals)).toFixed(6);
+                
+                document.getElementById('collateralBalance').textContent = `${formattedBalance} ${asset}`;
+            } catch (error) {
+                console.error(`获取${asset}余额失败:`, error);
+                document.getElementById('collateralBalance').textContent = `获取余额失败`;
+            }
+        }
+        
+        // 更新抵押率计算
+        function updateCollateralRate() {
+            const borrowAsset = document.getElementById('borrowAssetSelect').value;
+            const collateralAsset = document.getElementById('collateralAssetSelect').value;
+            const borrowAmount = parseFloat(document.getElementById('borrowAmountInput').value) || 0;
+            
+            if (borrowAmount <= 0) {
+                document.getElementById('yourCollateralRate').textContent = '0%';
+                return;
+            }
+            
+            // 计算借款价值
+            const borrowValue = borrowAmount * TOKEN_PRICES[borrowAsset];
+            
+            // 计算所需抵押品价值（150%抵押率）
+            const requiredCollateralValue = borrowValue * 1.5;
+            
+            // 计算所需抵押品数量
+            const requiredCollateralAmount = requiredCollateralValue / TOKEN_PRICES[collateralAsset];
+            
+            // 显示抵押率
+            document.getElementById('yourCollateralRate').textContent = `150% (需 ${requiredCollateralAmount.toFixed(6)} ${collateralAsset})`;
+        }
+        
+        // 处理存款
+        async function processDeposit() {
+            if (!currentAccount || !web3 || !lendingContract) {
+                showStatus('请先连接钱包', 'error', depositModal);
+                return;
+            }
+            
+            const asset = document.getElementById('depositAssetSelect').value;
+            const amountInput = document.getElementById('depositAmountInput');
+            const amount = parseFloat(amountInput.value);
+            
+            if (!amount || amount <= 0) {
+                showStatus('请输入有效的存款金额', 'error', depositModal);
+                return;
+            }
+            
+            const tokenContract = tokenContracts[asset];
+            const tokenAddress = TOKEN_CONTRACTS[asset];
+            if (!tokenContract || !tokenAddress) {
+                showStatus('所选资产不支持', 'error', depositModal);
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                showLoading('处理存款中...', '请在钱包中确认交易');
+                closeModal(depositModal);
+                
+                // 转换金额为最小单位
+                const decimals = TOKEN_INFO[asset].decimals;
+                const amountInWei = web3.utils.toBN(amount * (10 ** decimals)).toString();
+                
+                // 先检查授权，如果授权不足则请求授权
+                const allowance = await tokenContract.methods.allowance(currentAccount, LENDING_CONTRACT_ADDRESS).call();
+                if (web3.utils.toBN(allowance).lt(web3.utils.toBN(amountInWei))) {
+                    // 需要授权
+                    await tokenContract.methods.approve(LENDING_CONTRACT_ADDRESS, amountInWei).send({ from: currentAccount });
+                }
+                
+                // 调用存款方法
+                const result = await lendingContract.methods.deposit(tokenAddress, amountInWei)
+                    .send({ from: currentAccount });
+                
+                // 存款成功
+                hideLoading();
+                showStatus(`成功存入 ${amount} ${asset}`, 'success');
+                
+                // 刷新资产数据
+                loadUserPortfolio();
+                
+                // 重置输入
+                amountInput.value = '';
+                
+            } catch (error) {
+                console.error('存款失败:', error);
+                hideLoading();
+                
+                if (error.message.includes('User denied transaction signature')) {
+                    showStatus('您已取消存款交易', 'error');
+                } else {
+                    showStatus('存款失败，请稍后再试', 'error');
+                }
+            }
+        }
+        
+        // 处理借款
+        async function processBorrow() {
+            if (!currentAccount || !web3 || !lendingContract) {
+                showStatus('请先连接钱包', 'error', borrowModal);
+                return;
+            }
+            
+            const borrowAsset = document.getElementById('borrowAssetSelect').value;
+            const collateralAsset = document.getElementById('collateralAssetSelect').value;
+            const borrowAmountInput = document.getElementById('borrowAmountInput');
+            const borrowAmount = parseFloat(borrowAmountInput.value);
+            
+            if (!borrowAmount || borrowAmount <= 0) {
+                showStatus('请输入有效的借款金额', 'error', borrowModal);
+                return;
+            }
+            
+            const borrowTokenContract = tokenContracts[borrowAsset];
+            const borrowTokenAddress = TOKEN_CONTRACTS[borrowAsset];
+            const collateralTokenContract = tokenContracts[collateralAsset];
+            const collateralTokenAddress = TOKEN_CONTRACTS[collateralAsset];
+            
+            if (!borrowTokenContract || !borrowTokenAddress || !collateralTokenContract || !collateralTokenAddress) {
+                showStatus('所选资产不支持', 'error', borrowModal);
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                showLoading('处理借款中...', '请在钱包中确认交易');
+                closeModal(borrowModal);
+                
+                // 计算所需抵押品数量（150%抵押率）
+                const borrowValue = borrowAmount * TOKEN_PRICES[borrowAsset];
+                const requiredCollateralValue = borrowValue * 1.5;
+                const collateralAmount = requiredCollateralValue / TOKEN_PRICES[collateralAsset];
+                
+                // 转换金额为最小单位
+                const borrowDecimals = TOKEN_INFO[borrowAsset].decimals;
+                const collateralDecimals = TOKEN_INFO[collateralAsset].decimals;
+                const borrowAmountInWei = web3.utils.toBN(borrowAmount * (10 ** borrowDecimals)).toString();
+                const collateralAmountInWei = web3.utils.toBN(collateralAmount * (10 ** collateralDecimals)).toString();
+                
+                // 检查抵押资产授权
+                const collateralAllowance = await collateralTokenContract.methods.allowance(currentAccount, LENDING_CONTRACT_ADDRESS).call();
+                if (web3.utils.toBN(collateralAllowance).lt(web3.utils.toBN(collateralAmountInWei))) {
+                    // 需要授权
+                    await collateralTokenContract.methods.approve(LENDING_CONTRACT_ADDRESS, collateralAmountInWei).send({ from: currentAccount });
+                }
+                
+                // 调用借款方法
+                const result = await lendingContract.methods.borrow(
+                    borrowTokenAddress,
+                    collateralTokenAddress,
+                    borrowAmountInWei,
+                    collateralAmountInWei
+                ).send({ from: currentAccount });
+                
+                // 借款成功
+                hideLoading();
+                showStatus(`成功借入 ${borrowAmount} ${borrowAsset}，抵押 ${collateralAmount.toFixed(6)} ${collateralAsset}`, 'success');
+                
+                // 刷新资产数据
+                loadUserPortfolio();
+                
+                // 重置输入
+                borrowAmountInput.value = '';
+                
+            } catch (error) {
+                console.error('借款失败:', error);
+                hideLoading();
+                
+                if (error.message.includes('User denied transaction signature')) {
+                    showStatus('您已取消借款交易', 'error');
+                } else {
+                    showStatus('借款失败，请稍后再试', 'error');
+                }
+            }
+        }
+        
+        // 工具函数：打开模态框
+        function openModal(modal) {
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                
+                // 重置状态信息
+                const statusEl = modal.querySelector('#depositStatus, #borrowStatus');
+                if (statusEl) {
+                    statusEl.textContent = '';
+                    statusEl.className = 'text-sm font-medium text-center';
+                }
+            }
+        }
+        
+        // 工具函数：关闭模态框
+        function closeModal(modal) {
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // 工具函数：显示状态消息
+        function showStatus(message, type, container = document.body) {
+            // 检查是否已有状态元素
+            let statusEl = container.querySelector('.global-status');
+            
+            if (!statusEl) {
+                // 创建状态元素
+                statusEl = document.createElement('div');
+                statusEl.className = 'global-status fixed bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 text-sm font-medium transition-all duration-300';
+                container.appendChild(statusEl);
+            }
+            
+            // 设置消息和样式
+            statusEl.textContent = message;
+            
+            // 移除所有类型类
+            statusEl.classList.remove('bg-success', 'bg-danger', 'bg-primary', 'text-white');
+            
+            // 添加对应类型的样式
+            switch(type) {
+                case 'success':
+                    statusEl.classList.add('bg-success', 'text-white');
+                    break;
+                case 'error':
+                    statusEl.classList.add('bg-danger', 'text-white');
+                    break;
+                case 'info':
+                    statusEl.classList.add('bg-primary', 'text-white');
+                    break;
+            }
+            
+            // 显示元素
+            statusEl.style.opacity = '1';
+            statusEl.style.transform = 'translate(-50%, 0)';
+            
+            // 3秒后隐藏
+            setTimeout(() => {
+                statusEl.style.opacity = '0';
+                statusEl.style.transform = 'translate(-50%, 20px)';
+            }, 3000);
+        }
+        
+        // 工具函数：显示加载状态
+        function showLoading(message, submessage) {
+            const loadingModal = document.getElementById('loadingModal');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const loadingSubmessage = document.getElementById('loadingSubmessage');
+            
+            if (loadingMessage) loadingMessage.textContent = message;
+            if (loadingSubmessage) loadingSubmessage.textContent = submessage;
+            
+            if (loadingModal) {
+                loadingModal.classList.remove('hidden');
+                loadingModal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        // 工具函数：隐藏加载状态
+        function hideLoading() {
+            const loadingModal = document.getElementById('loadingModal');
+            if (loadingModal) {
+                loadingModal.classList.add('hidden');
+                loadingModal.classList.remove('flex');
+                document.body.style.overflow = '';
+            }
+        }
+    </script>
+</body>
+</html>
